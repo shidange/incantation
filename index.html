@@ -21,8 +21,9 @@
     padding:18px 16px; margin-bottom:16px;}
   .zh{font-size:19px; line-height:1.6; margin-bottom:8px;}
   .en{font-size:14px; line-height:1.5; color:var(--dim); font-style:italic; margin-bottom:14px;}
-  .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-  button{border:none; border-radius:12px; padding:12px 16px; font-size:15px;
+  .track{display:flex; gap:10px; align-items:center; margin-top:10px;}
+  .track .label{width:56px; font-size:13px; color:var(--dim); flex-shrink:0;}
+  button{border:none; border-radius:12px; padding:11px 14px; font-size:14px;
     font-weight:600; color:#0f1115; background:var(--accent); cursor:pointer;}
   button.secondary{background:#333845; color:var(--text);}
   button.rec{background:var(--danger); color:#fff;}
@@ -44,9 +45,9 @@
 <div class="sub">听是提示 · 念出来的才计数</div>
 <div id="cards"></div>
 <div class="hint">
-  录音需要 HTTPS（放到网上打开，file:// 无法用麦克风）。<br>
-  循环播放时保持屏幕常亮、页面在前台。<br>
-  每遍播完会留出空档——跟着用自己的声音念出来。
+  中文和英文分开录、分开循环。<br>
+  每遍播完留出空档——跟着用自己的声音念出来。<br>
+  循环时保持屏幕常亮、页面在前台。
 </div>
 
 <script>
@@ -58,6 +59,7 @@ const SCRIPTS = [
     zh:"因为我读什么就变成什么，一闲下来我就读书，因为每一页都在复利。",
     en:"Because I become what I read, whenever I'm free I read, because every page compounds." }
 ];
+const LANGS=[{k:"zh",label:"中文"},{k:"en",label:"English"}];
 
 // ---------- IndexedDB for audio blobs ----------
 let db;
@@ -67,17 +69,17 @@ const dbReady = new Promise((res,rej)=>{
   q.onsuccess = e=>{db=e.target.result; res();};
   q.onerror = ()=>rej(q.error);
 });
-const saveAudio=(id,blob)=>dbReady.then(()=>new Promise((res,rej)=>{
+const saveAudio=(key,blob)=>dbReady.then(()=>new Promise((res,rej)=>{
   const t=db.transaction("audio","readwrite");
-  t.objectStore("audio").put(blob,id);
+  t.objectStore("audio").put(blob,key);
   t.oncomplete=res; t.onerror=()=>rej(t.error);
 }));
-const loadAudio=id=>dbReady.then(()=>new Promise((res,rej)=>{
-  const r=db.transaction("audio").objectStore("audio").get(id);
+const loadAudio=key=>dbReady.then(()=>new Promise((res,rej)=>{
+  const r=db.transaction("audio").objectStore("audio").get(key);
   r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error);
 }));
 
-// ---------- counts in localStorage ----------
+// ---------- counts in localStorage (per script) ----------
 const today=()=>new Date().toISOString().slice(0,10);
 function getCounts(id){
   const c=JSON.parse(localStorage.getItem("count_"+id)||"{}");
@@ -90,8 +92,8 @@ function bump(id){
   renderCounts(id);
 }
 
-// ---------- per-card state ----------
-const state={}; // id -> {recorder, chunks, blobUrl, audio, looping, timer}
+// ---------- per-track state (key = scriptId_lang) ----------
+const state={}; // key -> {recorder, chunks, blobUrl, audio, looping, timer, scriptId}
 let wakeLock=null;
 async function keepAwake(on){
   try{
@@ -100,8 +102,8 @@ async function keepAwake(on){
   }catch(e){}
 }
 
-async function toggleRecord(id){
-  const s=state[id], btn=document.getElementById("rec_"+id);
+async function toggleRecord(key){
+  const s=state[key], btn=document.getElementById("rec_"+key);
   if(s.recorder && s.recorder.state==="recording"){ s.recorder.stop(); return; }
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -113,55 +115,54 @@ async function toggleRecord(id){
     s.recorder.onstop=async()=>{
       stream.getTracks().forEach(t=>t.stop());
       const blob=new Blob(s.chunks,{type:s.recorder.mimeType});
-      await saveAudio(id,blob);
-      setAudio(id,blob);
+      await saveAudio(key,blob);
+      setAudio(key,blob);
       btn.textContent="重录"; btn.classList.remove("rec");
-      setStatus(id,"已保存你的声音 ✓");
-      document.getElementById("play_"+id).disabled=false;
+      setStatus(s.scriptId,"已保存 ✓");
+      document.getElementById("play_"+key).disabled=false;
     };
     s.recorder.start();
     btn.textContent="停止"; btn.classList.add("rec");
-    setStatus(id,"录音中…用自然、带感情的语气念一遍");
-  }catch(e){ setStatus(id,"无法使用麦克风："+e.message); }
+    setStatus(s.scriptId,"录音中…自然、带感情地念一遍");
+  }catch(e){ setStatus(s.scriptId,"无法使用麦克风："+e.message); }
 }
 
-function setAudio(id,blob){
-  const s=state[id];
+function setAudio(key,blob){
+  const s=state[key];
   if(s.blobUrl) URL.revokeObjectURL(s.blobUrl);
   s.blobUrl=URL.createObjectURL(blob);
   s.audio=new Audio(s.blobUrl);
   s.audio.onended=()=>{
     if(!s.looping) return;
-    bump(id);
-    const gap=+document.getElementById("gap_"+id).value;
-    showSay(id,true);
-    s.timer=setTimeout(()=>{ showSay(id,false);
-      if(s.looping && s.audio) s.audio.play().catch(()=>stopLoop(id));
+    bump(s.scriptId);
+    const gap=+document.getElementById("gap_"+s.scriptId).value;
+    showSay(s.scriptId,true);
+    s.timer=setTimeout(()=>{ showSay(s.scriptId,false);
+      if(s.looping && s.audio) s.audio.play().catch(()=>stopLoop(key));
     }, gap*1000);
   };
 }
 
-function toggleLoop(id){
-  const s=state[id];
-  if(s.looping){ stopLoop(id); return; }
-  if(!s.audio){ setStatus(id,"先录一段自己的声音"); return; }
-  // stop any other looping card
-  Object.keys(state).forEach(k=>{ if(k!==id) stopLoop(k); });
+function toggleLoop(key){
+  const s=state[key];
+  if(s.looping){ stopLoop(key); return; }
+  if(!s.audio){ setStatus(s.scriptId,"先录一段自己的声音"); return; }
+  Object.keys(state).forEach(k=>{ if(k!==key) stopLoop(k); });
   s.looping=true; keepAwake(true);
-  const btn=document.getElementById("play_"+id);
-  btn.textContent="停止循环"; btn.classList.add("playing");
+  const btn=document.getElementById("play_"+key);
+  btn.textContent="停止"; btn.classList.add("playing");
   s.audio.currentTime=0;
-  s.audio.play().catch(e=>{ setStatus(id,"播放失败："+e.message); stopLoop(id); });
+  s.audio.play().catch(e=>{ setStatus(s.scriptId,"播放失败："+e.message); stopLoop(key); });
 }
 
-function stopLoop(id){
-  const s=state[id]; if(!s) return;
+function stopLoop(key){
+  const s=state[key]; if(!s) return;
   s.looping=false;
   if(s.timer) clearTimeout(s.timer);
   if(s.audio){ s.audio.pause(); s.audio.currentTime=0; }
-  showSay(id,false);
-  const btn=document.getElementById("play_"+id);
-  if(btn){ btn.textContent="循环播放"; btn.classList.remove("playing"); }
+  showSay(s.scriptId,false);
+  const btn=document.getElementById("play_"+key);
+  if(btn){ btn.textContent="循环"; btn.classList.remove("playing"); }
   if(!Object.values(state).some(x=>x.looping)) keepAwake(false);
 }
 
@@ -175,16 +176,23 @@ function renderCounts(id){
 // ---------- render ----------
 const wrap=document.getElementById("cards");
 SCRIPTS.forEach(sc=>{
-  state[sc.id]={looping:false};
   const div=document.createElement("div");
   div.className="card";
+  let tracks="";
+  LANGS.forEach(l=>{
+    const key=sc.id+"_"+l.k;
+    state[key]={looping:false, scriptId:sc.id};
+    tracks+=`
+    <div class="track">
+      <span class="label">${l.label}</span>
+      <button id="rec_${key}" class="secondary">录音</button>
+      <button id="play_${key}" disabled>循环</button>
+    </div>`;
+  });
   div.innerHTML=`
     <div class="zh">${sc.zh}</div>
     <div class="en">${sc.en}</div>
-    <div class="row">
-      <button id="rec_${sc.id}" class="secondary">录音</button>
-      <button id="play_${sc.id}" disabled>循环播放</button>
-    </div>
+    ${tracks}
     <div class="gapRow">跟读空档
       <input type="range" id="gap_${sc.id}" min="2" max="12" value="5">
       <span id="gapv_${sc.id}">5s</span>
@@ -196,19 +204,21 @@ SCRIPTS.forEach(sc=>{
       <button class="plusone" id="plus_${sc.id}">我念了一遍 +1</button>
     </div>`;
   wrap.appendChild(div);
-  document.getElementById("rec_"+sc.id).onclick=()=>toggleRecord(sc.id);
-  document.getElementById("play_"+sc.id).onclick=()=>toggleLoop(sc.id);
+  LANGS.forEach(l=>{
+    const key=sc.id+"_"+l.k;
+    document.getElementById("rec_"+key).onclick=()=>toggleRecord(key);
+    document.getElementById("play_"+key).onclick=()=>toggleLoop(key);
+    loadAudio(key).then(blob=>{
+      if(blob){ setAudio(key,blob);
+        document.getElementById("play_"+key).disabled=false;
+        document.getElementById("rec_"+key).textContent="重录";
+      }
+    });
+  });
   document.getElementById("plus_"+sc.id).onclick=()=>bump(sc.id);
   const g=document.getElementById("gap_"+sc.id);
   g.oninput=()=>document.getElementById("gapv_"+sc.id).textContent=g.value+"s";
   renderCounts(sc.id);
-  loadAudio(sc.id).then(blob=>{
-    if(blob){ setAudio(sc.id,blob);
-      document.getElementById("play_"+sc.id).disabled=false;
-      document.getElementById("rec_"+sc.id).textContent="重录";
-      setStatus(sc.id,"已有录音 ✓");
-    }
-  });
 });
 document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="visible" && Object.values(state).some(x=>x.looping)) keepAwake(true);
