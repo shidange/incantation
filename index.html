@@ -14,52 +14,122 @@
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   body{margin:0; background:var(--bg); color:var(--text);
     font-family:-apple-system,"PingFang SC","Hiragino Sans GB",sans-serif;
-    padding:max(16px,env(safe-area-inset-top)) 16px 40px;}
+    padding:max(16px,env(safe-area-inset-top)) 16px 40px; max-width:560px; margin-inline:auto;}
   h1{font-size:20px; font-weight:600; letter-spacing:4px; text-align:center; margin:12px 0 2px;}
-  .sub{text-align:center; color:var(--dim); font-size:12px; margin-bottom:18px;}
+  .sub{text-align:center; color:var(--dim); font-size:12px; margin-bottom:6px;}
+  .syncBar{text-align:center; font-size:11px; color:var(--dim); margin-bottom:16px; display:flex; align-items:center; justify-content:center; gap:6px;}
+  .syncDot{width:7px; height:7px; border-radius:50%; background:var(--dim); display:inline-block;}
+  .syncDot.ok{background:var(--accent2);}
+  .syncDot.err{background:var(--danger);}
   .card{background:var(--card); border:1px solid var(--line); border-radius:16px;
-    padding:18px 16px; margin-bottom:16px;}
-  .zh{font-size:19px; line-height:1.6; margin-bottom:8px;}
-  .en{font-size:14px; line-height:1.5; color:var(--dim); font-style:italic; margin-bottom:14px;}
-  .track{display:flex; gap:10px; align-items:center; margin-top:10px;}
-  .track .label{width:56px; font-size:13px; color:var(--dim); flex-shrink:0;}
-  button{border:none; border-radius:12px; padding:11px 14px; font-size:14px;
-    font-weight:600; color:#0f1115; background:var(--accent); cursor:pointer;}
+    padding:18px 16px; margin-bottom:16px; transition:border-color .25s, box-shadow .25s;}
+  .card.flash{border-color:var(--accent2); box-shadow:0 0 0 2px rgba(110,168,122,.35);}
+  .card.abort{border-color:var(--danger); box-shadow:0 0 0 2px rgba(192,86,78,.3);}
+  .zh{font-size:19px; line-height:1.65; margin-bottom:8px;}
+  .en{font-size:14px; line-height:1.55; color:var(--dim); font-style:italic; margin-bottom:14px;}
+  .char{transition:color .12s; border-radius:3px;}
+  .char.done{color:var(--accent2); font-weight:600;}
+  .char.abort{color:var(--danger);}
+  .track{display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap;}
+  .track .label{width:54px; font-size:13px; color:var(--dim); flex-shrink:0;}
+  button{border:none; border-radius:11px; padding:9px 13px; font-size:13px;
+    font-weight:600; color:#0f1115; background:var(--accent); cursor:pointer; transition:opacity .15s, transform .1s;}
+  button:active{transform:scale(.98);}
   button.secondary{background:#333845; color:var(--text);}
   button.rec{background:var(--danger); color:#fff;}
-  button.playing{background:var(--accent2);}
-  button:disabled{opacity:.35;}
-  .gapRow{display:flex; align-items:center; gap:8px; margin-top:14px; color:var(--dim); font-size:13px;}
-  input[type=range]{flex:1; accent-color:var(--accent);}
-  .counts{margin-top:12px; font-size:13px; color:var(--dim); display:flex; justify-content:space-between; align-items:center;}
-  .plusone{background:transparent; border:1px solid var(--accent); color:var(--accent); padding:8px 14px; font-size:14px;}
-  .hint{color:var(--dim); font-size:12px; text-align:center; margin-top:20px; line-height:1.7;}
-  .status{font-size:12px; color:var(--accent2); min-height:16px; margin-top:8px;}
-  .say{margin-top:10px; font-size:15px; color:var(--accent); min-height:20px; text-align:center;
-    opacity:0; transition:opacity .3s;}
-  .say.on{opacity:1;}
+  button.playing{background:var(--accent2); color:#0f1115;}
+  button.readBtn{background:#262b36; color:var(--accent); border:1px solid rgba(212,162,78,.45);}
+  button.readBtn.active{background:var(--accent2); color:#0f1115; border-color:var(--accent2);}
+  button:disabled{opacity:.35; cursor:not-allowed;}
+  .meterWrap{margin-top:12px; display:none; flex-direction:column; gap:6px; padding-top:10px; border-top:1px dashed var(--line);}
+  .meterWrap.on{display:flex;}
+  .meterTop{display:flex; justify-content:space-between; align-items:center; font-size:12px;}
+  .meterLabel{color:var(--dim);}
+  .meterText{color:var(--dim); font-weight:500;}
+  .meterText.speaking{color:var(--accent2); font-weight:600;}
+  .meterText.warn{color:var(--danger);}
+  .meterBg{width:100%; height:8px; background:#12141a; border-radius:99px; overflow:hidden; border:1px solid var(--line);}
+  .meterFill{height:100%; width:0%; background:var(--accent); border-radius:99px; transition:width .12s ease, background .15s;}
+  .meterFill.done{background:var(--accent2);}
+  .meterFill.warn{background:var(--danger);}
+  .heardBox{font-size:12px; color:var(--dim); min-height:16px;}
+  .counts{margin-top:14px; padding-top:10px; border-top:1px solid var(--line); font-size:13px; color:var(--dim); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;}
+  .countMain{color:var(--text); font-weight:600;}
+  .countSub{font-size:12px; color:var(--dim);}
+  .historyRow{margin-top:8px; display:flex; gap:5px; align-items:center; font-size:11px; color:var(--dim); flex-wrap:wrap;}
+  .dayPill{background:#12141a; border:1px solid var(--line); border-radius:6px; padding:2px 6px; font-size:11px;}
+  .dayPill.has{border-color:rgba(110,168,122,.5); color:var(--accent2);}
+  .hint{color:var(--dim); font-size:12px; text-align:center; margin-top:20px; line-height:1.8;}
+  .status{font-size:12px; color:var(--accent); min-height:18px; margin-top:8px;}
+  .status.warn{color:var(--danger);}
+  .status.ok{color:var(--accent2);}
 </style>
 </head>
 <body>
 <h1>咒 语</h1>
-<div class="sub">听是提示 · 念出来的才计数</div>
+<div class="sub">听是提示（不计数） · 必须从头到尾完整读完才 +1</div>
+<div class="syncBar">
+  <span class="syncDot" id="syncDot"></span>
+  <span id="syncText">正在连接云端数据库…</span>
+</div>
 <div id="cards"></div>
 <div class="hint">
-  中文和英文分开录、分开循环。<br>
-  每遍播完留出空档——跟着用自己的声音念出来。<br>
-  循环时保持屏幕常亮、页面在前台。
+  <b>严格完读计数（无手动加分按钮）：</b><br>
+  • <b>循环听</b>：反复播录音，只听不计数。<br>
+  • <b>循环读</b>：按顺序逐段核验你念出的字词（文字实时变绿点亮）。<b>必须从第一句按顺序念到句尾最后一个词</b>才自动 +1 并同步云端；中途停下或跳读一律作废不计数。<br>
+  • 同一行同时开启<b>「循环听 + 循环读」</b>即为「领读一遍 → 等你完整跟读完 +1 → 再播下一遍」。
 </div>
 
 <script>
+const API_BASE = "https://incantation.shidan.workers.dev";
+
+// 每条咒语拆成严格先后顺序的关卡（checkpoints）：
+// 每一关必须在前一关匹配位置之后出现，全部关卡依次通关（到达句尾最后一个词）才算 100% 读完！
 const SCRIPTS = [
   { id:"sleep",
     zh:"因为我是长期主义者，11点一到，我合上电脑睡觉，因为我赚十年，不赚这一小时。",
-    en:"Because I am a long-term thinker, at 11 I close the laptop and sleep, because I take the decade, not the hour." },
+    en:"Because I am a long-term thinker, at 11 I close the laptop and sleep, because I take the decade, not the hour.",
+    minMs:{zh:3200, en:3200},
+    zhCheckpoints:[
+      { patterns:["因为我是","因为我"], charEnd:5 },
+      { patterns:["长期主义","长期"], charEnd:10 },
+      { patterns:["11点","十一点","点1到","点一到"], charEnd:16 },
+      { patterns:["合上","和尚","电脑","睡觉"], charEnd:24 },
+      { patterns:["赚10年","赚十年","转10年","转十年","传10年","10年","十年"], charEnd:31 },
+      { patterns:["1小时","一小时","个小时","小时"], charEnd:38 }
+    ],
+    enCheckpoints:[
+      { patterns:["because","i am"], wordEnd:4 },
+      { patterns:["long","thinker"], wordEnd:6 },
+      { patterns:["11","eleven","close"], wordEnd:10 },
+      { patterns:["laptop","sleep"], wordEnd:14 },
+      { patterns:["take","decade"], wordEnd:19 },
+      { patterns:["hour"], wordEnd:22 }
+    ]
+  },
   { id:"read",
     zh:"因为我读什么就变成什么，一闲下来我就读书，因为每一页都在复利。",
-    en:"Because I become what I read, whenever I'm free I read, because every page compounds." }
+    en:"Because I become what I read, whenever I'm free I read, because every page compounds.",
+    minMs:{zh:2800, en:2600},
+    zhCheckpoints:[
+      { patterns:["因为我读","读什么"], charEnd:6 },
+      { patterns:["就变成","变成什么","变成"], charEnd:12 },
+      { patterns:["闲下来","停下来","先下来","闲下","弦下来","显下来"], charEnd:16 },
+      { patterns:["我就读","就读书","读书"], charEnd:21 },
+      { patterns:["每一页","每1页","每页","都在"], charEnd:28 },
+      { patterns:["复利","富丽","福利","付力","付立","负力","得利","狐狸","发力"], charEnd:31 }
+    ],
+    enCheckpoints:[
+      { patterns:["because","become"], wordEnd:3 },
+      { patterns:["what","read"], wordEnd:6 },
+      { patterns:["whenever","free"], wordEnd:9 },
+      { patterns:["read"], wordEnd:11 },
+      { patterns:["every","page"], wordEnd:14 },
+      { patterns:["compound","compounds"], wordEnd:15 }
+    ]
+  }
 ];
-const LANGS=[{k:"zh",label:"中文"},{k:"en",label:"English"}];
+const LANGS=[{k:"zh",label:"中文",srLang:"zh-CN"},{k:"en",label:"English",srLang:"en-US"}];
 
 // ---------- IndexedDB for audio blobs ----------
 let db;
@@ -79,32 +149,175 @@ const loadAudio=key=>dbReady.then(()=>new Promise((res,rej)=>{
   r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error);
 }));
 
-// ---------- counts in localStorage (per script) ----------
-const today=()=>new Date().toISOString().slice(0,10);
-function getCounts(id){
+// ---------- Local + Cloud D1 Database Sync ----------
+const today=()=>{
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+};
+
+let cloudHistory = [];
+
+function getLocalCounts(id){
   const c=JSON.parse(localStorage.getItem("count_"+id)||"{}");
-  return {today:(c.d===today()?c.t:0), total:c.total||0};
-}
-function bump(id){
-  const c=JSON.parse(localStorage.getItem("count_"+id)||"{}");
-  const t=(c.d===today()?c.t:0)+1;
-  localStorage.setItem("count_"+id,JSON.stringify({d:today(),t,total:(c.total||0)+1}));
-  renderCounts(id);
+  return {
+    today:(c.d===today()?c.t:0),
+    today_zh:(c.d===today()?(c.t_zh||0):0),
+    today_en:(c.d===today()?(c.t_en||0):0),
+    total:c.total||0
+  };
 }
 
-// ---------- per-track state (key = scriptId_lang) ----------
-const state={}; // key -> {recorder, chunks, blobUrl, audio, looping, timer, scriptId}
-let wakeLock=null;
-async function keepAwake(on){
+function saveLocalCounts(id, todayCount, totalCount, todayZh, todayEn){
+  localStorage.setItem("count_"+id, JSON.stringify({
+    d:today(), t:todayCount, total:totalCount, t_zh:todayZh||0, t_en:todayEn||0
+  }));
+}
+
+function setSyncStatus(stateStr, msg){
+  const dot=document.getElementById("syncDot");
+  const txt=document.getElementById("syncText");
+  if(dot) dot.className="syncDot"+(stateStr?" "+stateStr:"");
+  if(txt) txt.textContent=msg;
+}
+
+function applyCloudData(data){
+  if(!data || !data.ok) return;
+  cloudHistory = data.history || [];
+  SCRIPTS.forEach(sc=>{
+    const local = getLocalCounts(sc.id);
+    const remote = (data.scripts && data.scripts[sc.id]) || {today:0, total:0, today_zh:0, today_en:0};
+    const mergedToday = Math.max(local.today, remote.today);
+    const mergedTotal = Math.max(local.total, remote.total, mergedToday);
+    saveLocalCounts(sc.id, mergedToday, mergedTotal, remote.today_zh, remote.today_en);
+    renderCounts(sc.id);
+  });
+}
+
+async function initCloudSync(){
   try{
-    if(on && "wakeLock" in navigator){ wakeLock=await navigator.wakeLock.request("screen"); }
-    else if(wakeLock){ await wakeLock.release(); wakeLock=null; }
+    const items={};
+    SCRIPTS.forEach(sc=>{ items[sc.id]=getLocalCounts(sc.id); });
+    const res = await fetch(`${API_BASE}/api/sync`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({date:today(), items})
+    });
+    const data = await res.json();
+    if(data && data.ok){
+      applyCloudData(data);
+      setSyncStatus("ok","云端已同步（Cloudflare D1 数据库）");
+    }else{
+      setSyncStatus("err","云端返回异常，当前使用本地缓存");
+    }
+  }catch(e){
+    setSyncStatus("err","离线模式（联网后自动同步至云端）");
+  }
+}
+
+async function bump(id, lang){
+  const c = getLocalCounts(id);
+  const newToday = c.today + 1;
+  const newTotal = c.total + 1;
+  const newZh = c.today_zh + (lang==="zh"?1:0);
+  const newEn = c.today_en + (lang==="en"?1:0);
+  saveLocalCounts(id, newToday, newTotal, newZh, newEn);
+  renderCounts(id);
+  flashCard(id, "flash");
+  playDing();
+
+  setSyncStatus("", "正在同步 +1 到云端…");
+  try{
+    const res = await fetch(`${API_BASE}/api/bump`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({script_id:id, lang, date:today()})
+    });
+    const data = await res.json();
+    if(data && data.ok){
+      applyCloudData(data);
+      setSyncStatus("ok", `云端已保存 ✓（刚刚 +1）`);
+    }
+  }catch(e){
+    setSyncStatus("err", "已存本地（待联网同步云端）");
+  }
+}
+
+function flashCard(id, cls){
+  const card=document.getElementById("card_"+id);
+  if(!card) return;
+  card.classList.remove("flash","abort");
+  card.classList.add(cls);
+  setTimeout(()=>card.classList.remove(cls), 600);
+}
+
+// ---------- audio feedback ----------
+let sharedAudioCtx=null;
+function getAudioCtx(){
+  if(!sharedAudioCtx) sharedAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  if(sharedAudioCtx.state==="suspended") sharedAudioCtx.resume();
+  return sharedAudioCtx;
+}
+function playDing(){
+  try{
+    const ctx=getAudioCtx();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.type="sine";
+    osc.frequency.setValueAtTime(528, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(704, ctx.currentTime+0.14);
+    gain.gain.setValueAtTime(0.09, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.3);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime+0.31);
   }catch(e){}
 }
 
+// ---------- per-track state ----------
+const state={};
+let activeReadKey=null;
+let micStream=null, micAnalyser=null, micSource=null, vadTimer=null;
+let srInstance=null;
+let wakeLock=null;
+
+async function keepAwake(on){
+  try{
+    if(on && "wakeLock" in navigator && !wakeLock){ wakeLock=await navigator.wakeLock.request("screen"); }
+    else if(!on && wakeLock){ await wakeLock.release(); wakeLock=null; }
+  }catch(e){}
+}
+function anyActive(){
+  return Object.values(state).some(x=>x.looping) || !!activeReadKey;
+}
+
+// ---------- Render sentence characters/words ----------
+function renderSentenceHtml(sc, lang){
+  const text = sc[lang];
+  if(lang==="zh"){
+    return text.split("").map((ch,i)=>`<span class="char" id="ch_${sc.id}_zh_${i}">${ch}</span>`).join("");
+  }else{
+    const words = text.split(" ");
+    return words.map((w,i)=>`<span class="char" id="ch_${sc.id}_en_${i}">${w}</span>`).join(" ");
+  }
+}
+
+function highlightUpto(key, count, cls="done"){
+  const s=state[key]; if(!s) return;
+  const sc=SCRIPTS.find(x=>x.id===s.scriptId);
+  const total = s.lang==="zh" ? sc.zh.length : sc.en.split(" ").length;
+  for(let i=0;i<total;i++){
+    const el=document.getElementById(`ch_${s.scriptId}_${s.lang}_${i}`);
+    if(!el) continue;
+    el.classList.remove("done","abort");
+    if(i < count) el.classList.add(cls);
+  }
+}
+
+// ---------- Recording prompt audio ----------
 async function toggleRecord(key){
   const s=state[key], btn=document.getElementById("rec_"+key);
   if(s.recorder && s.recorder.state==="recording"){ s.recorder.stop(); return; }
+  Object.keys(state).forEach(stopListenLoop);
+  if(activeReadKey) stopReadLoop(activeReadKey);
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
     const mime=MediaRecorder.isTypeSupported("audio/mp4")?"audio/mp4":
@@ -118,13 +331,13 @@ async function toggleRecord(key){
       await saveAudio(key,blob);
       setAudio(key,blob);
       btn.textContent="重录"; btn.classList.remove("rec");
-      setStatus(s.scriptId,"已保存 ✓");
+      setStatus(s.scriptId,"录音已保存 ✓","ok");
       document.getElementById("play_"+key).disabled=false;
     };
     s.recorder.start();
     btn.textContent="停止"; btn.classList.add("rec");
-    setStatus(s.scriptId,"录音中…自然、带感情地念一遍");
-  }catch(e){ setStatus(s.scriptId,"无法使用麦克风："+e.message); }
+    setStatus(s.scriptId,"录音中…自然、带感情地完整念一遍","");
+  }catch(e){ setStatus(s.scriptId,"无法使用麦克风："+e.message,"warn"); }
 }
 
 function setAudio(key,blob){
@@ -133,44 +346,430 @@ function setAudio(key,blob){
   s.blobUrl=URL.createObjectURL(blob);
   s.audio=new Audio(s.blobUrl);
   s.audio.onended=()=>{
+    s.playingNow=false;
     if(!s.looping) return;
-    bump(s.scriptId);
-    const gap=+document.getElementById("gap_"+s.scriptId).value;
-    showSay(s.scriptId,true);
-    s.timer=setTimeout(()=>{ showSay(s.scriptId,false);
-      if(s.looping && s.audio) s.audio.play().catch(()=>stopLoop(key));
-    }, gap*1000);
+    if(activeReadKey===key){
+      resetReadAttempt(key);
+      s.waitingForPrompt=false;
+      setStatus(s.scriptId,"提示播完 —— 请从第一字到最后一字完整跟读（未读完不计数）","");
+      updateMeterUI(s.scriptId, 0, "请从头完整跟读…", "idle");
+    }else{
+      setStatus(s.scriptId,"循环听中（只听不计数）…","");
+      s.timer=setTimeout(()=>{
+        if(s.looping && s.audio){
+          s.playingNow=true;
+          s.audio.play().catch(()=>stopListenLoop(key));
+        }
+      }, 2000);
+    }
   };
 }
 
-function toggleLoop(key){
+// ---------- 循环听（只听不计数） ----------
+function toggleListenLoop(key){
   const s=state[key];
-  if(s.looping){ stopLoop(key); return; }
-  if(!s.audio){ setStatus(s.scriptId,"先录一段自己的声音"); return; }
-  Object.keys(state).forEach(k=>{ if(k!==key) stopLoop(k); });
+  if(s.looping){ stopListenLoop(key); return; }
+  if(!s.audio){ setStatus(s.scriptId,"请先录一段自己的声音","warn"); return; }
+  Object.keys(state).forEach(k=>{ if(k!==key) stopListenLoop(k); });
+  if(activeReadKey && activeReadKey!==key) stopReadLoop(activeReadKey);
+
   s.looping=true; keepAwake(true);
   const btn=document.getElementById("play_"+key);
-  btn.textContent="停止"; btn.classList.add("playing");
+  btn.textContent="停止听"; btn.classList.add("playing");
+
+  if(activeReadKey===key){
+    s.waitingForPrompt=true;
+    setStatus(s.scriptId,"领读播放中…（听完请完整跟读整句）","");
+  }else{
+    setStatus(s.scriptId,"循环听中（只听不计数）…","");
+  }
   s.audio.currentTime=0;
-  s.audio.play().catch(e=>{ setStatus(s.scriptId,"播放失败："+e.message); stopLoop(key); });
+  s.playingNow=true;
+  s.audio.play().catch(e=>{ setStatus(s.scriptId,"播放失败："+e.message,"warn"); stopListenLoop(key); });
 }
 
-function stopLoop(key){
+function stopListenLoop(key){
   const s=state[key]; if(!s) return;
-  s.looping=false;
+  s.looping=false; s.playingNow=false;
   if(s.timer) clearTimeout(s.timer);
   if(s.audio){ s.audio.pause(); s.audio.currentTime=0; }
-  showSay(s.scriptId,false);
   const btn=document.getElementById("play_"+key);
-  if(btn){ btn.textContent="循环"; btn.classList.remove("playing"); }
-  if(!Object.values(state).some(x=>x.looping)) keepAwake(false);
+  if(btn){ btn.textContent="循环听"; btn.classList.remove("playing"); }
+  if(activeReadKey===key){
+    s.waitingForPrompt=false;
+    setStatus(s.scriptId,"循环读已开启 —— 必须从头念到句尾才计数","");
+  }else{
+    setStatus(s.scriptId,"","");
+  }
+  keepAwake(anyActive());
 }
 
-const setStatus=(id,msg)=>document.getElementById("st_"+id).textContent=msg;
-const showSay=(id,on)=>document.getElementById("say_"+id).classList.toggle("on",on);
+// ---------- 严格顺序关卡完读检测（无任何计时混水摸鱼后门） ----------
+const VAD_THRESHOLD = 0.018;
+const ABORT_SILENCE_MS = 1800; // 未读完时停顿超过 1.8 秒，直接判未读完并作废
+const TICK_MS = 50;
+
+function normalizeText(raw, lang){
+  if(lang==="zh"){
+    return raw.replace(/\s+/g,"")
+      .replace(/十一点/g,"11点")
+      .replace(/十一/g,"11")
+      .replace(/十年/g,"10年")
+      .replace(/一小时/g,"1小时")
+      .replace(/一到/g,"1到")
+      .replace(/每一页/g,"每1页");
+  }else{
+    return raw.toLowerCase().replace(/[^a-z0-9\s]/g," ");
+  }
+}
+
+// 严格按顺序匹配 checkpoints：第 k 关只能在第 k-1 关匹配终点之后查找！
+function checkSequentialCheckpoints(key, rawTranscript){
+  const s=state[key];
+  const sc=SCRIPTS.find(x=>x.id===s.scriptId);
+  const cps = s.lang==="zh" ? sc.zhCheckpoints : sc.enCheckpoints;
+  const norm = normalizeText(rawTranscript || "", s.lang);
+  if(!norm) return {passed:0, total:cps.length, highlightCount:0, finished:false};
+
+  let searchFrom = 0;
+  let passed = 0;
+  let highlightCount = 0;
+
+  for(let i=0; i<cps.length; i++){
+    const cp = cps[i];
+    let bestPos = -1;
+    let bestLen = 0;
+    for(const pat of cp.patterns){
+      const idx = norm.indexOf(pat, searchFrom);
+      if(idx !== -1 && (bestPos === -1 || idx < bestPos)){
+        bestPos = idx;
+        bestLen = pat.length;
+      }
+    }
+    if(bestPos !== -1){
+      passed = i + 1;
+      highlightCount = s.lang==="zh" ? cp.charEnd : cp.wordEnd;
+      searchFrom = bestPos + bestLen;
+    }else{
+      // 当前关卡尚未读到，后面的关卡一律不准跳关解锁！
+      break;
+    }
+  }
+
+  return {
+    passed,
+    total: cps.length,
+    highlightCount,
+    finished: passed === cps.length
+  };
+}
+
+function startSpeechRec(key){
+  stopSpeechRec();
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const s=state[key];
+  if(!SR){
+    setStatus(s.scriptId,"当前浏览器不支持语音识别，请使用 Safari 或 Chrome 打开以进行完读校验","warn");
+    return;
+  }
+  const langObj=LANGS.find(l=>l.k===s.lang);
+  try{
+    const rec = new SR();
+    rec.lang = langObj.srLang;
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = (e)=>{
+      if(activeReadKey !== key || s.playingNow || s.waitingForPrompt || s.cooldown) return;
+      let text = "";
+      for(let i = s.srBaseIndex || 0; i < e.results.length; i++){
+        text += e.results[i][0].transcript;
+      }
+      s.lastResultLen = e.results.length;
+      s.transcript = text.trim();
+      if(!s.transcript) return;
+
+      s.silenceMs = 0;
+      s.speaking = true;
+      document.getElementById("hb_"+s.scriptId).textContent = `听到：「${s.transcript}」`;
+
+      const res = checkSequentialCheckpoints(key, s.transcript);
+      if(res.passed > (s.passedStages || 0)){
+        s.passedStages = res.passed;
+        s.highlightCount = res.highlightCount;
+      }
+      const pct = Math.round(((s.passedStages || 0) / res.total) * 100);
+      highlightUpto(key, s.highlightCount || 0, "done");
+
+      const sc=SCRIPTS.find(x=>x.id===s.scriptId);
+      const minMs = sc.minMs[s.lang];
+
+      if(res.finished && s.voicedMs >= minMs * 0.65){
+        s.srFinished = true;
+        completeOneRepetition(key);
+      }else{
+        updateMeterUI(
+          s.scriptId,
+          pct,
+          `已读 ${s.passedStages||0}/${res.total} 段 (${pct}%) — 请继续读到句尾…`,
+          "speaking"
+        );
+      }
+    };
+    rec.onerror = (ev)=>{
+      if(ev.error === "not-allowed"){
+        setStatus(s.scriptId,"请允许浏览器使用麦克风与语音识别权限","warn");
+      }
+    };
+    rec.onend = ()=>{
+      if(activeReadKey === key && srInstance === rec){
+        try{ s.srBaseIndex = 0; s.lastResultLen = 0; rec.start(); }catch(err){}
+      }
+    };
+    rec.start();
+    srInstance = rec;
+  }catch(e){}
+}
+
+function stopSpeechRec(){
+  if(srInstance){
+    const old = srInstance;
+    srInstance = null;
+    try{ old.stop(); }catch(e){}
+  }
+}
+
+function resetReadAttempt(key){
+  const s=state[key]; if(!s) return;
+  s.voicedMs = 0;
+  s.silenceMs = 0;
+  s.speaking = false;
+  s.passedStages = 0;
+  s.highlightCount = 0;
+  s.srFinished = false;
+  s.transcript = "";
+  s.srBaseIndex = s.lastResultLen || 0;
+  highlightUpto(key, 0);
+  const hb=document.getElementById("hb_"+s.scriptId);
+  if(hb) hb.textContent="";
+}
+
+async function ensureMic(){
+  if(micStream && micAnalyser) return true;
+  const stream=await navigator.mediaDevices.getUserMedia({
+    audio:{echoCancellation:true, noiseSuppression:true, autoGainControl:true}
+  });
+  const ctx=getAudioCtx();
+  const src=ctx.createMediaStreamSource(stream);
+  const analyser=ctx.createAnalyser();
+  analyser.fftSize=512;
+  src.connect(analyser);
+  micStream=stream; micSource=src; micAnalyser=analyser;
+  if(!vadTimer) vadTimer=setInterval(vadTick, TICK_MS);
+  return true;
+}
+
+function releaseMicIfIdle(){
+  if(activeReadKey) return;
+  if(vadTimer){ clearInterval(vadTimer); vadTimer=null; }
+  if(micStream){ micStream.getTracks().forEach(t=>t.stop()); micStream=null; }
+  micSource=null; micAnalyser=null;
+  stopSpeechRec();
+}
+
+function completeOneRepetition(key){
+  const s=state[key];
+  if(s.cooldown) return;
+  s.cooldown = true;
+  const sc=SCRIPTS.find(x=>x.id===s.scriptId);
+  const fullLen = s.lang==="zh" ? sc.zh.length : sc.en.split(" ").length;
+  highlightUpto(key, fullLen, "done");
+  bump(s.scriptId, s.lang);
+  updateMeterUI(s.scriptId, 100, "✓ 整句完整读完，+1 已同步云端！", "done");
+  setStatus(s.scriptId,"✓ 从头到尾完整读完，已计数 +1","ok");
+
+  setTimeout(()=>{
+    if(activeReadKey !== key) return;
+    s.cooldown = false;
+    resetReadAttempt(key);
+    if(s.looping && s.audio){
+      s.waitingForPrompt = true;
+      setStatus(s.scriptId,"领读播放中…（听完请完整跟读整句）","");
+      s.audio.currentTime = 0;
+      s.playingNow = true;
+      s.audio.play().catch(()=>stopListenLoop(key));
+    }else{
+      updateMeterUI(s.scriptId, 0, "请从头完整念下一遍…", "idle");
+    }
+  }, 950);
+}
+
+function abortIncompleteAttempt(key){
+  const s=state[key];
+  if(s.cooldown) return;
+  s.cooldown = true;
+  const sc=SCRIPTS.find(x=>x.id===s.scriptId);
+  const totalStages = (s.lang==="zh" ? sc.zhCheckpoints : sc.enCheckpoints).length;
+  const passed = s.passedStages || 0;
+  const pct = Math.round((passed / totalStages) * 100);
+
+  highlightUpto(key, s.highlightCount || 4, "abort");
+  flashCard(s.scriptId, "abort");
+  updateMeterUI(s.scriptId, Math.max(10, pct), `⚠️ 未读完整句（仅读 ${passed}/${totalStages} 段），不计数`, "warn");
+  setStatus(s.scriptId,`⚠️ 没读到句尾（停在第 ${passed}/${totalStages} 段），本次作废不计数`,"warn");
+
+  setTimeout(()=>{
+    if(activeReadKey !== key) return;
+    s.cooldown = false;
+    resetReadAttempt(key);
+    updateMeterUI(s.scriptId, 0, "请从第一句重新完整念到句尾…", "idle");
+  }, 1300);
+}
+
+function vadTick(){
+  if(!activeReadKey || !micAnalyser) return;
+  const key = activeReadKey;
+  const s = state[key];
+  if(s.cooldown) return;
+
+  if(s.looping && (s.playingNow || s.waitingForPrompt)){
+    updateMeterUI(s.scriptId, 0, "正在播领读…", "idle");
+    return;
+  }
+
+  const buf=new Float32Array(micAnalyser.fftSize);
+  micAnalyser.getFloatTimeDomainData(buf);
+  let sum=0;
+  for(let i=0;i<buf.length;i++) sum+=buf[i]*buf[i];
+  const rms=Math.sqrt(sum/buf.length);
+
+  if(rms >= VAD_THRESHOLD){
+    s.voicedMs += TICK_MS;
+    s.silenceMs = 0;
+    s.speaking = true;
+  }else if(s.speaking){
+    s.silenceMs += TICK_MS;
+    // 如果全部关卡已经通过，停顿 0.4 秒立即完成
+    if(s.srFinished && s.silenceMs >= 400){
+      completeOneRepetition(key);
+      return;
+    }
+    // 如果停顿超过 1.8 秒但还没通关全部段落 -> 判定为中途停下未读完，严格作废不计数！
+    if(!s.srFinished && s.silenceMs >= ABORT_SILENCE_MS){
+      if((s.passedStages || 0) > 0 || s.voicedMs >= 700){
+        abortIncompleteAttempt(key);
+      }else{
+        resetReadAttempt(key);
+      }
+    }
+  }
+}
+
+async function toggleReadLoop(key){
+  if(activeReadKey === key){ stopReadLoop(key); return; }
+  if(activeReadKey) stopReadLoop(activeReadKey);
+  const s=state[key];
+  Object.keys(state).forEach(k=>{ if(k!==key) stopListenLoop(k); });
+
+  try{
+    await ensureMic();
+  }catch(e){
+    setStatus(s.scriptId,"无法打开麦克风："+e.message,"warn");
+    return;
+  }
+
+  activeReadKey = key;
+  resetReadAttempt(key);
+  s.waitingForPrompt = !!(s.looping && s.playingNow);
+  startSpeechRec(key);
+
+  keepAwake(true);
+  const btn=document.getElementById("read_"+key);
+  btn.textContent="停止读"; btn.classList.add("active");
+  document.getElementById("mw_"+s.scriptId).classList.add("on");
+  document.getElementById("ml_"+s.scriptId).textContent = `严格完读校验（${s.lang==="zh"?"中文 6 段":"English 6 段"}）`;
+  updateMeterUI(s.scriptId, 0, "请从第一句完整念到句尾…", "idle");
+
+  if(s.looping){
+    setStatus(s.scriptId,"已开启「领读 + 跟读」：必须按顺序完整跟读到句尾最后一个词才 +1","");
+  }else{
+    setStatus(s.scriptId,"循环读已开启 —— 必须从头完整念到句尾才计数（中途停下作废）","");
+  }
+}
+
+function stopReadLoop(key){
+  const s=state[key]; if(!s) return;
+  if(activeReadKey === key) activeReadKey = null;
+  resetReadAttempt(key);
+  const btn=document.getElementById("read_"+key);
+  if(btn){ btn.textContent="🎙️ 循环读"; btn.classList.remove("active"); }
+  const mw=document.getElementById("mw_"+s.scriptId);
+  if(mw) mw.classList.remove("on");
+  if(s.looping){
+    setStatus(s.scriptId,"循环听中（只听不计数）…","");
+  }else{
+    setStatus(s.scriptId,"","");
+  }
+  releaseMicIfIdle();
+  keepAwake(anyActive());
+}
+
+function updateMeterUI(id, pct, text, mode){
+  const fill=document.getElementById("mf_"+id);
+  const txt=document.getElementById("mt_"+id);
+  if(fill){
+    fill.style.width=pct+"%";
+    fill.classList.remove("done","warn");
+    if(mode==="done") fill.classList.add("done");
+    if(mode==="warn") fill.classList.add("warn");
+  }
+  if(txt){
+    txt.textContent=text;
+    txt.classList.remove("speaking","warn");
+    if(mode==="speaking" || mode==="done") txt.classList.add("speaking");
+    if(mode==="warn") txt.classList.add("warn");
+  }
+}
+
+function setStatus(id,msg,cls){
+  const el=document.getElementById("st_"+id);
+  if(!el) return;
+  el.textContent=msg;
+  el.className="status"+(cls?" "+cls:"");
+}
+
 function renderCounts(id){
-  const c=getCounts(id);
-  document.getElementById("cnt_"+id).textContent=`今天 ${c.today} 遍 · 累计 ${c.total} 遍`;
+  const c=getLocalCounts(id);
+  const cntEl=document.getElementById("cnt_"+id);
+  const subEl=document.getElementById("cntsub_"+id);
+  if(cntEl) cntEl.textContent=`今天 ${c.today} 遍 · 累计 ${c.total} 遍`;
+  if(subEl){
+    if(c.today_zh || c.today_en){
+      subEl.textContent=`今日明细：中 ${c.today_zh} · EN ${c.today_en}`;
+    }else{
+      subEl.textContent=`仅完整读完自动计数`;
+    }
+  }
+  renderHistoryRow(id);
+}
+
+function renderHistoryRow(id){
+  const row=document.getElementById("hist_"+id);
+  if(!row) return;
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date(Date.now() - i*86400000);
+    const ds=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    const label = i===0 ? "今" : `${d.getMonth()+1}/${d.getDate()}`;
+    let cnt = 0;
+    if(i===0){
+      cnt = getLocalCounts(id).today;
+    }else{
+      const found = cloudHistory.find(h=>h.date===ds && h.script_id===id);
+      if(found) cnt = Number(found.count||0);
+    }
+    days.push(`<span class="dayPill ${cnt>0?"has":""}">${label}: ${cnt}</span>`);
+  }
+  row.innerHTML = `<span>近7天云端记录：</span>` + days.join("");
 }
 
 // ---------- render ----------
@@ -178,36 +777,46 @@ const wrap=document.getElementById("cards");
 SCRIPTS.forEach(sc=>{
   const div=document.createElement("div");
   div.className="card";
+  div.id="card_"+sc.id;
   let tracks="";
   LANGS.forEach(l=>{
     const key=sc.id+"_"+l.k;
-    state[key]={looping:false, scriptId:sc.id};
+    state[key]={
+      looping:false, playingNow:false, scriptId:sc.id, lang:l.k,
+      voicedMs:0, silenceMs:0, speaking:false, passedStages:0, highlightCount:0, srFinished:false
+    };
     tracks+=`
     <div class="track">
       <span class="label">${l.label}</span>
       <button id="rec_${key}" class="secondary">录音</button>
-      <button id="play_${key}" disabled>循环</button>
+      <button id="play_${key}" disabled>循环听</button>
+      <button id="read_${key}" class="readBtn">🎙️ 循环读</button>
     </div>`;
   });
   div.innerHTML=`
-    <div class="zh">${sc.zh}</div>
-    <div class="en">${sc.en}</div>
+    <div class="zh" id="txt_${sc.id}_zh">${renderSentenceHtml(sc,"zh")}</div>
+    <div class="en" id="txt_${sc.id}_en">${renderSentenceHtml(sc,"en")}</div>
     ${tracks}
-    <div class="gapRow">跟读空档
-      <input type="range" id="gap_${sc.id}" min="2" max="12" value="5">
-      <span id="gapv_${sc.id}">5s</span>
+    <div class="meterWrap" id="mw_${sc.id}">
+      <div class="meterTop">
+        <span class="meterLabel" id="ml_${sc.id}">完读进度</span>
+        <span class="meterText" id="mt_${sc.id}">请从第一句完整念到句尾…</span>
+      </div>
+      <div class="meterBg"><div class="meterFill" id="mf_${sc.id}"></div></div>
+      <div class="heardBox" id="hb_${sc.id}"></div>
     </div>
-    <div class="say" id="say_${sc.id}">—— 现在，你念 ——</div>
     <div class="status" id="st_${sc.id}"></div>
     <div class="counts">
-      <span id="cnt_${sc.id}"></span>
-      <button class="plusone" id="plus_${sc.id}">我念了一遍 +1</button>
-    </div>`;
+      <span class="countMain" id="cnt_${sc.id}"></span>
+      <span class="countSub" id="cntsub_${sc.id}">仅完整读完自动计数</span>
+    </div>
+    <div class="historyRow" id="hist_${sc.id}"></div>`;
   wrap.appendChild(div);
   LANGS.forEach(l=>{
     const key=sc.id+"_"+l.k;
     document.getElementById("rec_"+key).onclick=()=>toggleRecord(key);
-    document.getElementById("play_"+key).onclick=()=>toggleLoop(key);
+    document.getElementById("play_"+key).onclick=()=>toggleListenLoop(key);
+    document.getElementById("read_"+key).onclick=()=>toggleReadLoop(key);
     loadAudio(key).then(blob=>{
       if(blob){ setAudio(key,blob);
         document.getElementById("play_"+key).disabled=false;
@@ -215,13 +824,16 @@ SCRIPTS.forEach(sc=>{
       }
     });
   });
-  document.getElementById("plus_"+sc.id).onclick=()=>bump(sc.id);
-  const g=document.getElementById("gap_"+sc.id);
-  g.oninput=()=>document.getElementById("gapv_"+sc.id).textContent=g.value+"s";
   renderCounts(sc.id);
 });
+
+initCloudSync();
+
 document.addEventListener("visibilitychange",()=>{
-  if(document.visibilityState==="visible" && Object.values(state).some(x=>x.looping)) keepAwake(true);
+  if(document.visibilityState==="visible"){
+    if(anyActive()) keepAwake(true);
+    initCloudSync();
+  }
 });
 </script>
 </body>
