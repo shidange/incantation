@@ -32,15 +32,13 @@
   .char.abort{color:var(--danger);}
   .track{display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap;}
   .track .label{width:54px; font-size:13px; color:var(--dim); flex-shrink:0;}
-  button{border:none; border-radius:11px; padding:9px 13px; font-size:13px;
+  button{border:none; border-radius:11px; padding:9px 14px; font-size:13px;
     font-weight:600; color:#0f1115; background:var(--accent); cursor:pointer; transition:opacity .15s, transform .1s;}
   button:active{transform:scale(.98);}
-  button.secondary{background:#333845; color:var(--text);}
-  button.rec{background:var(--danger); color:#fff;}
+  button.secondary{background:#2b303c; color:var(--text);}
   button.playing{background:var(--accent2); color:#0f1115;}
   button.readBtn{background:#262b36; color:var(--accent); border:1px solid rgba(212,162,78,.45);}
   button.readBtn.active{background:var(--accent2); color:#0f1115; border-color:var(--accent2);}
-  button:disabled{opacity:.35; cursor:not-allowed;}
   .meterWrap{margin-top:12px; display:none; flex-direction:column; gap:6px; padding-top:10px; border-top:1px dashed var(--line);}
   .meterWrap.on{display:flex;}
   .meterTop{display:flex; justify-content:space-between; align-items:center; font-size:12px;}
@@ -74,17 +72,14 @@
 </div>
 <div id="cards"></div>
 <div class="hint">
-  <b>严格完读计数（无手动加分按钮）：</b><br>
-  • <b>循环听</b>：反复播录音，只听不计数。<br>
-  • <b>循环读</b>：按顺序逐段核验你念出的字词（文字实时变绿点亮）。<b>必须从第一句按顺序念到句尾最后一个词</b>才自动 +1 并同步云端；中途停下或跳读一律作废不计数。<br>
-  • 同一行同时开启<b>「循环听 + 循环读」</b>即为「领读一遍 → 等你完整跟读完 +1 → 再播下一遍」。
+  <b>严格完读计数规则：</b><br>
+  • <b>🎙️ 循环读</b>：按顺序逐段核验你念出的字词（文字实时变绿点亮）。<b>必须从第一句按顺序念到句尾最后一个词</b>才自动 +1 并同步云端；中途停下或跳读一律作废不计数。<br>
+  • <b>🔊 循环听</b>：直接用系统语音朗读提示，只听不计数；与「循环读」同开即为「领读一遍 → 等你完整跟读完 +1 → 再播下一遍」。
 </div>
 
 <script>
 const API_BASE = "https://incantation.shidan.workers.dev";
 
-// 每条咒语拆成 6 个顺序关卡（checkpoints）：
-// 支持跨逗号换气累积识别，兼容系统把「11点」转成「11:00」以及常见同音字。
 const SCRIPTS = [
   { id:"sleep",
     zh:"因为我是长期主义者，11点一到，我合上电脑睡觉，因为我赚十年，不赚这一小时。",
@@ -130,24 +125,6 @@ const SCRIPTS = [
   }
 ];
 const LANGS=[{k:"zh",label:"中文",srLang:"zh-CN"},{k:"en",label:"English",srLang:"en-US"}];
-
-// ---------- IndexedDB for audio blobs ----------
-let db;
-const dbReady = new Promise((res,rej)=>{
-  const q = indexedDB.open("incantations",1);
-  q.onupgradeneeded = e=>e.target.result.createObjectStore("audio");
-  q.onsuccess = e=>{db=e.target.result; res();};
-  q.onerror = ()=>rej(q.error);
-});
-const saveAudio=(key,blob)=>dbReady.then(()=>new Promise((res,rej)=>{
-  const t=db.transaction("audio","readwrite");
-  t.objectStore("audio").put(blob,key);
-  t.oncomplete=res; t.onerror=()=>rej(t.error);
-}));
-const loadAudio=key=>dbReady.then(()=>new Promise((res,rej)=>{
-  const r=db.transaction("audio").objectStore("audio").get(key);
-  r.onsuccess=()=>res(r.result||null); r.onerror=()=>rej(r.error);
-}));
 
 // ---------- Local + Cloud D1 Database Sync ----------
 const today=()=>{
@@ -312,40 +289,23 @@ function highlightUpto(key, count, cls="done"){
   }
 }
 
-// ---------- Recording prompt audio ----------
-async function toggleRecord(key){
-  const s=state[key], btn=document.getElementById("rec_"+key);
-  if(s.recorder && s.recorder.state==="recording"){ s.recorder.stop(); return; }
-  Object.keys(state).forEach(stopListenLoop);
-  if(activeReadKey) stopReadLoop(activeReadKey);
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    const mime=MediaRecorder.isTypeSupported("audio/mp4")?"audio/mp4":
-               MediaRecorder.isTypeSupported("audio/webm")?"audio/webm":"";
-    s.chunks=[];
-    s.recorder=new MediaRecorder(stream, mime?{mimeType:mime}:{});
-    s.recorder.ondataavailable=e=>s.chunks.push(e.data);
-    s.recorder.onstop=async()=>{
-      stream.getTracks().forEach(t=>t.stop());
-      const blob=new Blob(s.chunks,{type:s.recorder.mimeType});
-      await saveAudio(key,blob);
-      setAudio(key,blob);
-      btn.textContent="重录"; btn.classList.remove("rec");
-      setStatus(s.scriptId,"录音已保存 ✓","ok");
-      document.getElementById("play_"+key).disabled=false;
-    };
-    s.recorder.start();
-    btn.textContent="停止"; btn.classList.add("rec");
-    setStatus(s.scriptId,"录音中…自然、带感情地完整念一遍","");
-  }catch(e){ setStatus(s.scriptId,"无法使用麦克风："+e.message,"warn"); }
-}
-
-function setAudio(key,blob){
+// ---------- 🔊 循环听（免录音，直接用系统自然语音朗读，只听不计数） ----------
+function speakOnce(key){
   const s=state[key];
-  if(s.blobUrl) URL.revokeObjectURL(s.blobUrl);
-  s.blobUrl=URL.createObjectURL(blob);
-  s.audio=new Audio(s.blobUrl);
-  s.audio.onended=()=>{
+  if(!s || !s.looping) return;
+  const sc=SCRIPTS.find(x=>x.id===s.scriptId);
+  const langObj=LANGS.find(l=>l.k===s.lang);
+  if(!("speechSynthesis" in window)){
+    setStatus(s.scriptId,"当前浏览器不支持语音合成朗读","warn");
+    stopListenLoop(key);
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(sc[s.lang]);
+  u.lang=langObj.srLang;
+  u.rate=0.95;
+  s.playingNow=true;
+  u.onend=()=>{
     s.playingNow=false;
     if(!s.looping) return;
     if(activeReadKey===key){
@@ -356,20 +316,19 @@ function setAudio(key,blob){
     }else{
       setStatus(s.scriptId,"循环听中（只听不计数）…","");
       s.timer=setTimeout(()=>{
-        if(s.looping && s.audio){
-          s.playingNow=true;
-          s.audio.play().catch(()=>stopListenLoop(key));
-        }
-      }, 2000);
+        if(s.looping) speakOnce(key);
+      }, 1800);
     }
   };
+  u.onerror=()=>{
+    s.playingNow=false;
+  };
+  window.speechSynthesis.speak(u);
 }
 
-// ---------- 循环听（只听不计数） ----------
 function toggleListenLoop(key){
   const s=state[key];
   if(s.looping){ stopListenLoop(key); return; }
-  if(!s.audio){ setStatus(s.scriptId,"请先录一段自己的声音","warn"); return; }
   Object.keys(state).forEach(k=>{ if(k!==key) stopListenLoop(k); });
   if(activeReadKey && activeReadKey!==key) stopReadLoop(activeReadKey);
 
@@ -383,18 +342,16 @@ function toggleListenLoop(key){
   }else{
     setStatus(s.scriptId,"循环听中（只听不计数）…","");
   }
-  s.audio.currentTime=0;
-  s.playingNow=true;
-  s.audio.play().catch(e=>{ setStatus(s.scriptId,"播放失败："+e.message,"warn"); stopListenLoop(key); });
+  speakOnce(key);
 }
 
 function stopListenLoop(key){
   const s=state[key]; if(!s) return;
   s.looping=false; s.playingNow=false;
   if(s.timer) clearTimeout(s.timer);
-  if(s.audio){ s.audio.pause(); s.audio.currentTime=0; }
+  if("speechSynthesis" in window) window.speechSynthesis.cancel();
   const btn=document.getElementById("play_"+key);
-  if(btn){ btn.textContent="循环听"; btn.classList.remove("playing"); }
+  if(btn){ btn.textContent="🔊 循环听"; btn.classList.remove("playing"); }
   if(activeReadKey===key){
     s.waitingForPrompt=false;
     setStatus(s.scriptId,"循环读已开启 —— 必须从头念到句尾才计数","");
@@ -404,9 +361,9 @@ function stopListenLoop(key){
   keepAwake(anyActive());
 }
 
-// ---------- 严格顺序关卡完读检测（修复长句断句丢失与 11:00 时间格式问题） ----------
+// ---------- 严格顺序关卡完读检测 ----------
 const VAD_THRESHOLD = 0.018;
-const ABORT_SILENCE_MS = 2500; // 给语音识别留足返回句尾文字的缓冲时间（2.5秒）
+const ABORT_SILENCE_MS = 2500;
 const TICK_MS = 50;
 
 function normalizeText(raw, lang){
@@ -423,8 +380,6 @@ function normalizeText(raw, lang){
   }
 }
 
-// 严格按顺序匹配 checkpoints：
-// 同时支持对整段累积文本按顺序推进，即使中间因为逗号换气导致浏览器重启识别也不会丢掉前半句进度！
 function checkSequentialCheckpoints(key, fullTranscript){
   const s=state[key];
   const sc=SCRIPTS.find(x=>x.id===s.scriptId);
@@ -452,7 +407,6 @@ function checkSequentialCheckpoints(key, fullTranscript){
       highlightCount = s.lang==="zh" ? cp.charEnd : cp.wordEnd;
       searchFrom = bestPos + bestLen;
     }else{
-      // 允许中间最多有 1 个非末尾关卡因生僻同音字未命中，只要紧接着下一关在后面明确命中即可连贯推进
       if(i < cps.length - 1){
         const nextCp = cps[i+1];
         let nextPos = -1, nextLen = 0;
@@ -462,12 +416,11 @@ function checkSequentialCheckpoints(key, fullTranscript){
             nextPos = idx; nextLen = pat.length;
           }
         }
-        // 只有当前面至少已通过 1 关时，才允许跨过中间单个同音异字关卡
         if(passed >= 1 && nextPos !== -1){
           passed = i + 2;
           highlightCount = s.lang==="zh" ? nextCp.charEnd : nextCp.wordEnd;
           searchFrom = nextPos + nextLen;
-          i++; // 已推进到 i+1
+          i++;
           continue;
         }
       }
@@ -505,7 +458,6 @@ function startSpeechRec(key){
       }
       s.lastResultLen = e.results.length;
       s.currentSessionText = sessionText.trim();
-      // 跨换气累积本轮已说出的全部内容，防止长句中间换气时前半句被浏览器清空
       const fullText = ((s.committedText || "") + " " + (s.currentSessionText || "")).trim();
       s.transcript = fullText;
       if(!fullText) return;
@@ -544,7 +496,6 @@ function startSpeechRec(key){
     };
     rec.onend = ()=>{
       if(activeReadKey === key && srInstance === rec){
-        // 把刚才这一小段话保存进本轮累积文本，再无缝重启识别
         if(s.currentSessionText){
           s.committedText = ((s.committedText || "") + " " + s.currentSessionText).trim();
           s.currentSessionText = "";
@@ -620,12 +571,10 @@ function completeOneRepetition(key){
     if(activeReadKey !== key) return;
     s.cooldown = false;
     resetReadAttempt(key);
-    if(s.looping && s.audio){
+    if(s.looping){
       s.waitingForPrompt = true;
       setStatus(s.scriptId,"领读播放中…（听完请完整跟读整句）","");
-      s.audio.currentTime = 0;
-      s.playingNow = true;
-      s.audio.play().catch(()=>stopListenLoop(key));
+      speakOnce(key);
     }else{
       updateMeterUI(s.scriptId, 0, "请从头完整念下一遍…", "idle");
     }
@@ -677,12 +626,10 @@ function vadTick(){
     s.speaking = true;
   }else if(s.speaking){
     s.silenceMs += TICK_MS;
-    // 如果全部关卡已经通过，停顿 0.3 秒立即完成
     if(s.srFinished && s.silenceMs >= 300){
       completeOneRepetition(key);
       return;
     }
-    // 如果停顿超过 2.5 秒但还没通关全部段落 -> 判定为中途停下未读完，严格作废不计数！
     if(!s.srFinished && s.silenceMs >= ABORT_SILENCE_MS){
       if((s.passedStages || 0) > 0 || s.voicedMs >= 800){
         abortIncompleteAttempt(key);
@@ -817,9 +764,8 @@ SCRIPTS.forEach(sc=>{
     tracks+=`
     <div class="track">
       <span class="label">${l.label}</span>
-      <button id="rec_${key}" class="secondary">录音</button>
-      <button id="play_${key}" disabled>循环听</button>
       <button id="read_${key}" class="readBtn">🎙️ 循环读</button>
+      <button id="play_${key}" class="secondary">🔊 循环听</button>
     </div>`;
   });
   div.innerHTML=`
@@ -843,15 +789,8 @@ SCRIPTS.forEach(sc=>{
   wrap.appendChild(div);
   LANGS.forEach(l=>{
     const key=sc.id+"_"+l.k;
-    document.getElementById("rec_"+key).onclick=()=>toggleRecord(key);
     document.getElementById("play_"+key).onclick=()=>toggleListenLoop(key);
     document.getElementById("read_"+key).onclick=()=>toggleReadLoop(key);
-    loadAudio(key).then(blob=>{
-      if(blob){ setAudio(key,blob);
-        document.getElementById("play_"+key).disabled=false;
-        document.getElementById("rec_"+key).textContent="重录";
-      }
-    });
   });
   renderCounts(sc.id);
 });
