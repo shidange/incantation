@@ -83,47 +83,47 @@
 <script>
 const API_BASE = "https://incantation.shidan.workers.dev";
 
-// 每条咒语拆成严格先后顺序的关卡（checkpoints）：
-// 每一关必须在前一关匹配位置之后出现，全部关卡依次通关（到达句尾最后一个词）才算 100% 读完！
+// 每条咒语拆成 6 个顺序关卡（checkpoints）：
+// 支持跨逗号换气累积识别，兼容系统把「11点」转成「11:00」以及常见同音字。
 const SCRIPTS = [
   { id:"sleep",
     zh:"因为我是长期主义者，11点一到，我合上电脑睡觉，因为我赚十年，不赚这一小时。",
     en:"Because I am a long-term thinker, at 11 I close the laptop and sleep, because I take the decade, not the hour.",
-    minMs:{zh:3200, en:3200},
+    minMs:{zh:2800, en:2800},
     zhCheckpoints:[
-      { patterns:["因为我是","因为我"], charEnd:5 },
-      { patterns:["长期主义","长期"], charEnd:10 },
-      { patterns:["11点","十一点","点1到","点一到"], charEnd:16 },
-      { patterns:["合上","和尚","电脑","睡觉"], charEnd:24 },
-      { patterns:["赚10年","赚十年","转10年","转十年","传10年","10年","十年"], charEnd:31 },
-      { patterns:["1小时","一小时","个小时","小时"], charEnd:38 }
+      { patterns:["因为我是","因为我","由于我是","我是"], charEnd:5 },
+      { patterns:["长期主义","长期","常期","长久","主义","主意"], charEnd:10 },
+      { patterns:["11点","11:","十一点","1到","一到","一道","一刀","遇到","移到","已到","点到"], charEnd:16 },
+      { patterns:["合上","和尚","河上","何上","关上","盒上","电脑","睡觉","水饺"], charEnd:24 },
+      { patterns:["赚10年","转10年","传10年","攒10年","占10年","算10年","10年","十年","食年","石年","时年","实年","赚十","赚10"], charEnd:31 },
+      { patterns:["1小时","一小时","个小时","小时","小食","小石","消逝","消失","少时","不赚这","不转这","不攒这","这一小","这1小"], charEnd:38 }
     ],
     enCheckpoints:[
-      { patterns:["because","i am"], wordEnd:4 },
-      { patterns:["long","thinker"], wordEnd:6 },
+      { patterns:["because","i am","i'm"], wordEnd:4 },
+      { patterns:["long","thinker","term"], wordEnd:6 },
       { patterns:["11","eleven","close"], wordEnd:10 },
-      { patterns:["laptop","sleep"], wordEnd:14 },
-      { patterns:["take","decade"], wordEnd:19 },
-      { patterns:["hour"], wordEnd:22 }
+      { patterns:["laptop","computer","sleep"], wordEnd:14 },
+      { patterns:["take","decade","ten"], wordEnd:19 },
+      { patterns:["hour","our","not the"], wordEnd:22 }
     ]
   },
   { id:"read",
     zh:"因为我读什么就变成什么，一闲下来我就读书，因为每一页都在复利。",
     en:"Because I become what I read, whenever I'm free I read, because every page compounds.",
-    minMs:{zh:2800, en:2600},
+    minMs:{zh:2600, en:2500},
     zhCheckpoints:[
-      { patterns:["因为我读","读什么"], charEnd:6 },
+      { patterns:["因为我读","读什么","因为我"], charEnd:6 },
       { patterns:["就变成","变成什么","变成"], charEnd:12 },
-      { patterns:["闲下来","停下来","先下来","闲下","弦下来","显下来"], charEnd:16 },
-      { patterns:["我就读","就读书","读书"], charEnd:21 },
-      { patterns:["每一页","每1页","每页","都在"], charEnd:28 },
-      { patterns:["复利","富丽","福利","付力","付立","负力","得利","狐狸","发力"], charEnd:31 }
+      { patterns:["闲下来","停下来","先下来","闲下","弦下来","显下来","嫌下来","下来"], charEnd:16 },
+      { patterns:["我就读","就读书","读书","读数"], charEnd:21 },
+      { patterns:["每一页","每1页","每页","都在","美1页","每一夜","每1夜"], charEnd:28 },
+      { patterns:["复利","富丽","福利","付力","付立","负力","得利","狐狸","发力","复立","腹立"], charEnd:31 }
     ],
     enCheckpoints:[
       { patterns:["because","become"], wordEnd:3 },
       { patterns:["what","read"], wordEnd:6 },
       { patterns:["whenever","free"], wordEnd:9 },
-      { patterns:["read"], wordEnd:11 },
+      { patterns:["read","red"], wordEnd:11 },
       { patterns:["every","page"], wordEnd:14 },
       { patterns:["compound","compounds"], wordEnd:15 }
     ]
@@ -404,18 +404,18 @@ function stopListenLoop(key){
   keepAwake(anyActive());
 }
 
-// ---------- 严格顺序关卡完读检测（无任何计时混水摸鱼后门） ----------
+// ---------- 严格顺序关卡完读检测（修复长句断句丢失与 11:00 时间格式问题） ----------
 const VAD_THRESHOLD = 0.018;
-const ABORT_SILENCE_MS = 1800; // 未读完时停顿超过 1.8 秒，直接判未读完并作废
+const ABORT_SILENCE_MS = 2500; // 给语音识别留足返回句尾文字的缓冲时间（2.5秒）
 const TICK_MS = 50;
 
 function normalizeText(raw, lang){
   if(lang==="zh"){
     return raw.replace(/\s+/g,"")
-      .replace(/十一点/g,"11点")
+      .replace(/11:00|11：00|11\.00|十一点/g,"11点")
       .replace(/十一/g,"11")
       .replace(/十年/g,"10年")
-      .replace(/一小时/g,"1小时")
+      .replace(/一个小时|1个小时|一小时/g,"1小时")
       .replace(/一到/g,"1到")
       .replace(/每一页/g,"每1页");
   }else{
@@ -423,13 +423,14 @@ function normalizeText(raw, lang){
   }
 }
 
-// 严格按顺序匹配 checkpoints：第 k 关只能在第 k-1 关匹配终点之后查找！
-function checkSequentialCheckpoints(key, rawTranscript){
+// 严格按顺序匹配 checkpoints：
+// 同时支持对整段累积文本按顺序推进，即使中间因为逗号换气导致浏览器重启识别也不会丢掉前半句进度！
+function checkSequentialCheckpoints(key, fullTranscript){
   const s=state[key];
   const sc=SCRIPTS.find(x=>x.id===s.scriptId);
   const cps = s.lang==="zh" ? sc.zhCheckpoints : sc.enCheckpoints;
-  const norm = normalizeText(rawTranscript || "", s.lang);
-  if(!norm) return {passed:0, total:cps.length, highlightCount:0, finished:false};
+  const norm = normalizeText(fullTranscript || "", s.lang);
+  if(!norm) return {passed:s.passedStages||0, total:cps.length, highlightCount:s.highlightCount||0, finished:false};
 
   let searchFrom = 0;
   let passed = 0;
@@ -451,7 +452,25 @@ function checkSequentialCheckpoints(key, rawTranscript){
       highlightCount = s.lang==="zh" ? cp.charEnd : cp.wordEnd;
       searchFrom = bestPos + bestLen;
     }else{
-      // 当前关卡尚未读到，后面的关卡一律不准跳关解锁！
+      // 允许中间最多有 1 个非末尾关卡因生僻同音字未命中，只要紧接着下一关在后面明确命中即可连贯推进
+      if(i < cps.length - 1){
+        const nextCp = cps[i+1];
+        let nextPos = -1, nextLen = 0;
+        for(const pat of nextCp.patterns){
+          const idx = norm.indexOf(pat, searchFrom);
+          if(idx !== -1 && (nextPos === -1 || idx < nextPos)){
+            nextPos = idx; nextLen = pat.length;
+          }
+        }
+        // 只有当前面至少已通过 1 关时，才允许跨过中间单个同音异字关卡
+        if(passed >= 1 && nextPos !== -1){
+          passed = i + 2;
+          highlightCount = s.lang==="zh" ? nextCp.charEnd : nextCp.wordEnd;
+          searchFrom = nextPos + nextLen;
+          i++; // 已推进到 i+1
+          continue;
+        }
+      }
       break;
     }
   }
@@ -480,19 +499,22 @@ function startSpeechRec(key){
     rec.interimResults = true;
     rec.onresult = (e)=>{
       if(activeReadKey !== key || s.playingNow || s.waitingForPrompt || s.cooldown) return;
-      let text = "";
+      let sessionText = "";
       for(let i = s.srBaseIndex || 0; i < e.results.length; i++){
-        text += e.results[i][0].transcript;
+        sessionText += e.results[i][0].transcript;
       }
       s.lastResultLen = e.results.length;
-      s.transcript = text.trim();
-      if(!s.transcript) return;
+      s.currentSessionText = sessionText.trim();
+      // 跨换气累积本轮已说出的全部内容，防止长句中间换气时前半句被浏览器清空
+      const fullText = ((s.committedText || "") + " " + (s.currentSessionText || "")).trim();
+      s.transcript = fullText;
+      if(!fullText) return;
 
       s.silenceMs = 0;
       s.speaking = true;
-      document.getElementById("hb_"+s.scriptId).textContent = `听到：「${s.transcript}」`;
+      document.getElementById("hb_"+s.scriptId).textContent = `听到：「${fullText}」`;
 
-      const res = checkSequentialCheckpoints(key, s.transcript);
+      const res = checkSequentialCheckpoints(key, fullText);
       if(res.passed > (s.passedStages || 0)){
         s.passedStages = res.passed;
         s.highlightCount = res.highlightCount;
@@ -503,7 +525,7 @@ function startSpeechRec(key){
       const sc=SCRIPTS.find(x=>x.id===s.scriptId);
       const minMs = sc.minMs[s.lang];
 
-      if(res.finished && s.voicedMs >= minMs * 0.65){
+      if(res.finished && s.voicedMs >= minMs * 0.55){
         s.srFinished = true;
         completeOneRepetition(key);
       }else{
@@ -522,6 +544,11 @@ function startSpeechRec(key){
     };
     rec.onend = ()=>{
       if(activeReadKey === key && srInstance === rec){
+        // 把刚才这一小段话保存进本轮累积文本，再无缝重启识别
+        if(s.currentSessionText){
+          s.committedText = ((s.committedText || "") + " " + s.currentSessionText).trim();
+          s.currentSessionText = "";
+        }
         try{ s.srBaseIndex = 0; s.lastResultLen = 0; rec.start(); }catch(err){}
       }
     };
@@ -547,6 +574,8 @@ function resetReadAttempt(key){
   s.highlightCount = 0;
   s.srFinished = false;
   s.transcript = "";
+  s.committedText = "";
+  s.currentSessionText = "";
   s.srBaseIndex = s.lastResultLen || 0;
   highlightUpto(key, 0);
   const hb=document.getElementById("hb_"+s.scriptId);
@@ -648,14 +677,14 @@ function vadTick(){
     s.speaking = true;
   }else if(s.speaking){
     s.silenceMs += TICK_MS;
-    // 如果全部关卡已经通过，停顿 0.4 秒立即完成
-    if(s.srFinished && s.silenceMs >= 400){
+    // 如果全部关卡已经通过，停顿 0.3 秒立即完成
+    if(s.srFinished && s.silenceMs >= 300){
       completeOneRepetition(key);
       return;
     }
-    // 如果停顿超过 1.8 秒但还没通关全部段落 -> 判定为中途停下未读完，严格作废不计数！
+    // 如果停顿超过 2.5 秒但还没通关全部段落 -> 判定为中途停下未读完，严格作废不计数！
     if(!s.srFinished && s.silenceMs >= ABORT_SILENCE_MS){
-      if((s.passedStages || 0) > 0 || s.voicedMs >= 700){
+      if((s.passedStages || 0) > 0 || s.voicedMs >= 800){
         abortIncompleteAttempt(key);
       }else{
         resetReadAttempt(key);
